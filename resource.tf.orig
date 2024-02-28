@@ -1,0 +1,223 @@
+#terraform {
+#  required_providers {
+#    aws = {
+#      source  = "hashicorp/aws"
+#      version = "~> 4.16"
+#    }
+#  }
+#
+#  required_version = ">= 1.2.0"
+#}
+
+#provider "aws" {
+#  region  = "ap-south-1"
+#}
+
+resource "aws_instance" "kamlesh-instance" {
+  #ami           = "ami-0e670eb768a5fc3d4"
+  ami           = "ami-03f4878755434977f"
+  instance_type = "t2.micro"
+  key_name = "terraform_ec2_kamlesh_key"
+
+  tags = {
+    Name = "kamlesh"
+  }
+  vpc_security_group_ids = [aws_security_group.websg.id]
+  #for_each = var.security_map_ingress
+  #vpc_security_group_ids = [aws_security_group.[each.key].id]
+    provisioner "file" {
+
+        source      = "vhost-template.conf"
+
+        destination = "/home/ubuntu/vhosts.conf"
+
+        
+
+        connection {
+
+      type        = "ssh"
+
+      user        = "ubuntu"
+
+      private_key = "${file("/Users/kbm/Terraform/terraform_ec2_kamlesh_key")}"
+
+      host        = "${self.public_dns}"
+
+    }
+
+   }
+
+
+
+user_data = "${file("userdata.sh")}"
+
+ 
+
+  #tags = {
+#
+#    Name = "VirtualHostTutorial"
+#
+#  }
+
+}
+
+output "public_ip_of_kamlesh-instance" {
+  value=aws_instance.kamlesh-instance.public_ip
+}
+
+resource "aws_key_pair" "terraform_kamlesh_ec2_key" {
+	key_name = "terraform_ec2_kamlesh_key"
+	public_key = "${file("terraform_ec2_kamlesh_key.pub")}"
+}
+
+resource "aws_security_group" "websg" {
+        name= "websg"
+        tags = { 
+           Name = "websg"
+        }
+        ingress{ 
+         from_port =80
+         to_port =80
+         protocol ="tcp"
+         cidr_blocks =["0.0.0.0/0"]
+        }
+        ingress{ 
+         from_port =22
+         to_port =22
+         protocol ="tcp"
+         cidr_blocks =["0.0.0.0/0"]
+        }
+        egress{
+         from_port =0
+         to_port =0
+         protocol ="-1"
+         cidr_blocks =["0.0.0.0/0"]
+        }
+}
+
+#variable "security_rules" {
+#    type = map(map(object({
+#      from_port   = number
+#      to_port     = number
+#    })))
+#   security_rules = {
+#    kamlesh_sg1     = {
+#        {
+#          from_port   = 22
+#          to_port     = 22
+#        },
+#        {
+#          from_port   = 80
+#          to_port     = 80
+#        }
+#    },
+#    kamlesh_sg2     = {
+#        {
+#          from_port   = 22
+#          to_port     = 22
+#        },
+#        {
+#          from_port   = 80
+#          to_port     = 80
+#        },
+#        {
+#          from_port   = 443
+#          to_port     = 443
+#        }
+#    }
+#    kamlesh_sg3     = {
+#        {
+#          from_port   = 22
+#          to_port     = 22
+#        },
+#        {
+#          from_port   = 80
+#          to_port     = 80
+#        },
+#        {
+#          from_port   = 443
+#          to_port     = 443
+#        },
+#        {
+#          from_port   = 8080
+#          to_port     = 8080
+#        },
+#        {
+#          from_port   = 3306
+#          to_port     = 3306
+#        }
+#    }
+#}
+
+
+#locals {
+#  flat_security_rules = merge([
+#      for sg, rules in var.security_rules:
+#         {
+#           for rule, vals in rules:
+#             "${sg}-${rule}" => merge(vals, {sg_name = sg})
+#         }
+#    ]...)
+#}
+
+#resource "aws_security_group" "kamlesh_sg" {
+#  for_each          = local.flat_security_rules
+#  #type              = each.value.type
+#  type              = "ingress"
+#  from_port         = each.value.from_port
+#  to_port           = each.value.to_port
+#  #protocol          = each.value.protocol
+#  protocol          = tcp
+#  #cidr_blocks       = each.value.cidr_blocks
+#  cidr_blocks       = ["0.0.0.0/0"]
+#  #security_group_id = aws_security_group.ec2_security_groups[each.value.sg_name].id
+#}
+##variable "security_map_egress" {
+##  type = map(list(string))
+##  default = {
+##    kamlesh_sg1 = ["all"]
+##    kamlesh_sg2  = ["all"]
+##    kamlesh_sg3 = ["all"]
+##  }
+##}
+#
+##output "test" {
+ #value = each.key
+# value = [for n in [ for a,b in var.security_map_ingress: b ] : n]
+#}
+#resource "aws_security_group" "kamlesh_sg" {
+    #count = 3
+# 
+#    for_each = var.security_map_ingress
+#    name= each.key
+#    tags = { 
+#        Name = each.key
+#    }
+#    #for_each = var.security_map_ingress[kamlesh_sg${count.index}]
+#    #count = len(each.value)
+#    #for_each = each.value
+#    ingress{
+#      from_port = each.value[*].port
+#      to_port = each.value.port #[ for a in each.value[*] : a ]
+#      protocol ="tcp"
+#      cidr_blocks =["0.0.0.0/0"]
+#    }
+#    egress{
+#      from_port =0
+#      to_port =0
+#      protocol ="-1"
+#      cidr_blocks =["0.0.0.0/0"]
+#    }
+#}
+
+#resource "aws_eip" "webip"{
+# domain = "vpc"
+#}
+#
+#resource "aws_eip_association" "eip_assoc"{
+#   instance_id = aws_instance.kamlesh-instance.id
+#   allocation_id = aws_eip.webip.allocation_id
+#}
+
+ 
+        

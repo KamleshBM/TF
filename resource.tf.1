@@ -1,0 +1,35 @@
+variable "security_rules" {
+    type = map(map(object({
+      from_port   = number
+      to_port     = number
+    })))
+    default = {
+    kamlesh_sg1     = {
+          from_port   = 22,
+          to_port     = 22
+    },
+    kamlesh_sg2     = {
+          from_port   = 22,
+          to_port     = 22
+    },
+    kamlesh_sg3     = {
+          from_port   = 22,
+          to_port     = 22
+    }
+    }
+}
+
+resource "aws_security_group" "kamlesh-sg" {
+  name = "kamlesh-sg"
+dynamic "ingress" {
+for_each = var.security_rules
+content {
+from_port = ingress.key
+to_port = ingress.value
+protocol = "tcp"
+cidr_blocks = ["0.0.0.0/0"]
+}
+}
+}
+  
+
